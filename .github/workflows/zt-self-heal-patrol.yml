@@ -1,0 +1,42 @@
+name: Zero Trust Self-Heal (15min)
+on:
+  schedule:
+    - cron: '0,15,30,45 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: zt-self-heal-patrol
+  cancel-in-progress: false
+
+jobs:
+  patrol:
+    name: ZT Patrol
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Layer 1 - Permission Check
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: pwsh scripts/zero-trust/ops-layer1-permission-model.ps1
+      - name: Layer 6 - Self-Heal (full patrol)
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: pwsh scripts/zero-trust/ops-layer6-self-heal.ps1
+      - name: Layer 4 - Audit Collection
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: pwsh scripts/zero-trust/ops-layer4-immutable-audit.ps1
