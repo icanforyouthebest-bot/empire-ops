@@ -31,12 +31,24 @@ jobs:
           $h = [int]$env:HOURS_BACK
           pwsh scripts/ai-governance/generate-master-evidence.ps1 -HoursBack $h
 
+
+      - name: Generate System Dashboard
+        shell: pwsh
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: pwsh scripts/ai-governance/ops-layer10-dashboard.ps1
+        continue-on-error: true
+
       - name: Upload Master Evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: EMPIRE-MASTER-EVIDENCE-${{ github.run_id }}
-          path: EMPIRE-MASTER-EVIDENCE.json
+          path: |
+            EMPIRE-MASTER-EVIDENCE.json
+            EMPIRE-DASHBOARD.json
           retention-days: 365
         continue-on-error: true
 
