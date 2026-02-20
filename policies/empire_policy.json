@@ -1,0 +1,24 @@
+{
+  "github": {
+    "repos_require_branch_protection": [
+      "SEOBAIKE",
+      "seobaike-saas",
+      "empire-ops"
+    ]
+  },
+  "supabase": {
+    "project_ref": "vmyrivxxibqydccurxug",
+    "require_rls_all_tables": true,
+    "require_fixed_search_path": true,
+    "max_advisor_issues": 0
+  },
+  "cloudflare": {
+    "ssl_mode": "full_strict",
+    "min_tls_version": "1.2",
+    "waf_enabled": true
+  },
+  "azure": {
+    "require_mfa": true,
+    "client_secret_max_days": 365
+  }
+}
