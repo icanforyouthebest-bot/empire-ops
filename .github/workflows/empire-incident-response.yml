@@ -1,0 +1,31 @@
+name: Empire Auto Incident Response
+
+on:
+  schedule:
+    - cron: '5,20,35,50 * * * *'   # Every 15 min, offset from self-heal
+  workflow_dispatch:
+
+concurrency:
+  group: empire-incident-response
+  cancel-in-progress: false
+
+jobs:
+  auto-respond:
+    name: L9 Auto Incident Response
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Layer 9 - Auto Incident Response
+        shell: pwsh
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: pwsh scripts/zero-trust/ops-layer9-auto-response.ps1
+        continue-on-error: true
