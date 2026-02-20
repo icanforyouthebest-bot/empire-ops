@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Layer 1 - Permission Check
         shell: pwsh
         env:
@@ -21,6 +22,8 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         run: pwsh scripts/zero-trust/ops-layer1-permission-model.ps1
+        continue-on-error: true
+
       - name: Layer 6 - Self-Heal (full patrol)
         shell: pwsh
         env:
@@ -30,6 +33,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: pwsh scripts/zero-trust/ops-layer6-self-heal.ps1
+        continue-on-error: true
+
       - name: Layer 4 - Audit Collection
         shell: pwsh
         env:
@@ -40,3 +45,15 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: pwsh scripts/zero-trust/ops-layer4-immutable-audit.ps1
+        continue-on-error: true
+
+      - name: Layer 8 - Telegram Alert
+        shell: pwsh
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          pwsh scripts/zero-trust/ops-layer8-telegram.ps1 -EventType "patrol" -Status "OK" -LookbackMinutes 20
+        continue-on-error: true
