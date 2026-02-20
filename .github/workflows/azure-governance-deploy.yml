@@ -93,3 +93,20 @@ jobs:
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           ACTION: audit
         run: pwsh scripts/azure-governance/layer5-replace-officer.ps1
+
+  create-ca-policies:
+    name: 'Create Empire CA01/02/03'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Empire CA Policies (CA01/02/03)
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: pwsh scripts/azure-governance/create-ca-policies.ps1
+        continue-on-error: true
