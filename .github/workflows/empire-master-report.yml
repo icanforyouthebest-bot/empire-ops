@@ -1,0 +1,53 @@
+name: Empire Master Evidence Report
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'   # Every 3 hours
+  workflow_dispatch:
+    inputs:
+      hours_back:
+        description: 'Hours to look back'
+        required: false
+        default: '24'
+
+jobs:
+  master-report:
+    name: Generate Master Evidence Report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Master Evidence Report
+        shell: pwsh
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          HOURS_BACK: ${{ github.event.inputs.hours_back || '24' }}
+        run: |
+          $h = [int]$env:HOURS_BACK
+          pwsh scripts/ai-governance/generate-master-evidence.ps1 -HoursBack $h
+
+      - name: Upload Master Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: EMPIRE-MASTER-EVIDENCE-${{ github.run_id }}
+          path: EMPIRE-MASTER-EVIDENCE.json
+          retention-days: 365
+        continue-on-error: true
+
+      - name: Telegram — Report Ready
+        if: always()
+        shell: pwsh
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          pwsh scripts/zero-trust/ops-layer8-telegram.ps1 -EventType "master-report" -Status "OK" -LookbackMinutes 180
+        continue-on-error: true
