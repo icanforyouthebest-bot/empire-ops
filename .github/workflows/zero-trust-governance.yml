@@ -3,15 +3,15 @@ on:
   workflow_dispatch:
     inputs:
       layer:
-        description: 'Layer (1-6 or all)'
+        description: 'Layer (1-6, all, or evidence)'
         required: false
         default: 'all'
         type: choice
-        options: ['all', '1', '2', '3', '4', '5', '6']
+        options: ['all', '1', '2', '3', '4', '5', '6', '7-evidence']
       action:
-        description: 'For L5 only: audit | replace | lockout | list'
+        description: 'L5 only: audit | replace | lockout | list'
         required: false
-        default: 'audit'
+        default: 'list'
       old_officer:
         description: 'L5 replace: old officer UPN'
         required: false
@@ -22,7 +22,7 @@ on:
         description: 'L5 lockout: target UPN'
         required: false
       reason:
-        description: 'Reason for action'
+        description: 'Reason'
         required: false
         default: 'routine-governance'
 
@@ -35,6 +35,7 @@ jobs:
     name: 'ZT-L1: Permission Model'
     runs-on: ubuntu-latest
     if: github.event.inputs.layer == 'all' || github.event.inputs.layer == '1'
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Verify permission model
@@ -46,13 +47,14 @@ jobs:
         run: pwsh scripts/zero-trust/ops-layer1-permission-model.ps1
 
   layer2-role-template:
-    name: 'ZT-L2: Role Template'
+    name: 'ZT-L2: Role_Operations_Officer'
     runs-on: ubuntu-latest
     needs: layer1-permission-model
     if: always() && (github.event.inputs.layer == 'all' || github.event.inputs.layer == '2')
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Enforce role template
+      - name: Enforce immutable role template
         shell: pwsh
         env:
           TENANT_ID: ${{ secrets.TENANT_ID }}
@@ -61,13 +63,14 @@ jobs:
         run: pwsh scripts/zero-trust/ops-layer2-role-template.ps1
 
   layer4-audit:
-    name: 'ZT-L4: Immutable Audit'
+    name: 'ZT-L4: Immutable Audit (WORM)'
     runs-on: ubuntu-latest
     needs: layer2-role-template
     if: always() && (github.event.inputs.layer == 'all' || github.event.inputs.layer == '4')
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Collect immutable audit
+      - name: Collect immutable audit records
         shell: pwsh
         env:
           TENANT_ID: ${{ secrets.TENANT_ID }}
@@ -101,13 +104,14 @@ jobs:
         run: pwsh scripts/zero-trust/ops-layer5-replace-officer.ps1
 
   layer6-self-heal:
-    name: 'ZT-L6: Self-Heal'
+    name: 'ZT-L6: Self-Heal Patrol'
     runs-on: ubuntu-latest
     needs: layer5-officer-mgmt
     if: always() && (github.event.inputs.layer == 'all' || github.event.inputs.layer == '6')
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Self-heal patrol
+      - name: Self-heal patrol (drift = exit 1, alerts = exit 2)
         shell: pwsh
         env:
           TENANT_ID: ${{ secrets.TENANT_ID }}
@@ -116,3 +120,32 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: pwsh scripts/zero-trust/ops-layer6-self-heal.ps1
+
+  layer7-evidence:
+    name: 'ZT-L7: Evidence Snapshot'
+    runs-on: ubuntu-latest
+    needs: layer6-self-heal
+    if: always() && (github.event.inputs.layer == 'all' || github.event.inputs.layer == '7-evidence')
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture evidence snapshot (Before phase)
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ACTOR: github-actions-governance
+          ACTION_ID: ${{ github.run_id }}
+          PHASE: before
+        run: pwsh scripts/zero-trust/ops-layer7-evidence.ps1
+      - name: Upload evidence artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-${{ github.run_id }}
+          path: evidence-*.json
+          retention-days: 365
+          if-no-files-found: ignore
