@@ -115,6 +115,17 @@ jobs:
         run: pwsh scripts/ai-governance/seobaike-health-monitor.ps1
         continue-on-error: true
 
+      - name: Layer 11 - Compliance Score
+        shell: pwsh
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: pwsh scripts/ai-governance/ops-layer11-compliance-score.ps1
+        continue-on-error: true
+
   # ── Layer 8: Telegram Alert ─────────────────────────────────
   alert:
     name: L8 Telegram Alert
