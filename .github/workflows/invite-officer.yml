@@ -1,0 +1,37 @@
+name: Invite External Officer
+
+on:
+  workflow_dispatch:
+    inputs:
+      invite_email:
+        description: 'New officer email (e.g. admin@huida-group.com)'
+        required: true
+      invite_org:
+        description: 'Organization name (e.g. 輝達集團)'
+        required: true
+        default: '輝達集團'
+      invite_role:
+        description: 'Role to assign'
+        required: false
+        default: 'Role_Operations_Officer'
+
+jobs:
+  invite-officer:
+    name: Invite External Officer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Send B2B Invitation + Assign Role
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          INVITE_EMAIL: ${{ github.event.inputs.invite_email }}
+          INVITE_ORG: ${{ github.event.inputs.invite_org }}
+        run: |
+          pwsh scripts/azure-governance/invite-officer.ps1 `
+            -InviteRole "${{ github.event.inputs.invite_role }}"
