@@ -1,0 +1,95 @@
+name: Azure Governance Deploy
+on:
+  workflow_dispatch:
+    inputs:
+      layer:
+        description: 'Layer to deploy (1-5 or all)'
+        required: false
+        default: 'all'
+        type: choice
+        options: ['all', '1', '2', '3', '4', '5']
+  push:
+    branches: [main, master]
+    paths:
+      - 'scripts/azure-governance/**'
+
+jobs:
+  layer1-role-templates:
+    name: 'L1: Azure AD Role Templates'
+    runs-on: ubuntu-latest
+    if: github.event.inputs.layer == 'all' || github.event.inputs.layer == '1' || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Layer 1
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: pwsh scripts/azure-governance/layer1-role-templates.ps1
+
+  layer2-e5-security:
+    name: 'L2: E5 Security Hardening'
+    runs-on: ubuntu-latest
+    needs: layer1-role-templates
+    if: always() && (github.event.inputs.layer == 'all' || github.event.inputs.layer == '2' || github.event_name == 'push')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Layer 2
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: pwsh scripts/azure-governance/layer2-e5-security.ps1
+
+  layer3-self-heal:
+    name: 'L3: Self-Heal Runbook'
+    runs-on: ubuntu-latest
+    needs: layer2-e5-security
+    if: always() && (github.event.inputs.layer == 'all' || github.event.inputs.layer == '3' || github.event_name == 'push')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Layer 3
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: pwsh scripts/azure-governance/layer3-self-heal-runbook.ps1
+
+  layer4-audit:
+    name: 'L4: Audit Centralization'
+    runs-on: ubuntu-latest
+    needs: layer3-self-heal
+    if: always() && (github.event.inputs.layer == 'all' || github.event.inputs.layer == '4' || github.event_name == 'push')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Layer 4
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: pwsh scripts/azure-governance/layer4-audit-central.ps1
+
+  layer5-officer-audit:
+    name: 'L5: Officer Role Audit'
+    runs-on: ubuntu-latest
+    needs: layer4-audit
+    if: always() && (github.event.inputs.layer == 'all' || github.event.inputs.layer == '5' || github.event_name == 'push')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Layer 5 (audit mode)
+        shell: pwsh
+        env:
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          ACTION: audit
+        run: pwsh scripts/azure-governance/layer5-replace-officer.ps1
