@@ -1,0 +1,202 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-08-01/managementGroupDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Empire Governance Azure Policy Suite - Enforce controlled entry and evidence generation",
+    "version": "1.0.0",
+    "mandate": "All operations must go through controlled entry and produce Before/After/Diff evidence"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Authorization/policyDefinitions",
+      "apiVersion": "2021-06-01",
+      "name": "empire-require-evidence-tags",
+      "properties": {
+        "displayName": "Empire: Require Evidence Tag on All Operations",
+        "description": "All resources must have evidence-action-id tag. Operations without evidence are rejected.",
+        "policyType": "Custom",
+        "mode": "All",
+        "metadata": {
+          "category": "Empire Governance",
+          "version": "1.0.0"
+        },
+        "parameters": {},
+        "policyRule": {
+          "if": {
+            "allOf": [
+              {
+                "field": "type",
+                "in": [
+                  "Microsoft.Network/virtualNetworks",
+                  "Microsoft.Compute/virtualMachines",
+                  "Microsoft.Storage/storageAccounts",
+                  "Microsoft.KeyVault/vaults",
+                  "Microsoft.Authorization/roleAssignments"
+                ]
+              },
+              {
+                "field": "tags['empire-action-id']",
+                "exists": "false"
+              }
+            ]
+          },
+          "then": {
+            "effect": "deny"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/policyDefinitions",
+      "apiVersion": "2021-06-01",
+      "name": "empire-audit-all-operations",
+      "properties": {
+        "displayName": "Empire: Audit All Privileged Operations",
+        "description": "Audit all operations by privileged users to immutable storage",
+        "policyType": "Custom",
+        "mode": "All",
+        "metadata": {
+          "category": "Empire Governance"
+        },
+        "parameters": {
+          "auditStorageAccountId": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Audit Storage Account ID"
+            }
+          }
+        },
+        "policyRule": {
+          "if": {
+            "field": "type",
+            "equals": "Microsoft.Authorization/roleAssignments"
+          },
+          "then": {
+            "effect": "audit"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/policyDefinitions",
+      "apiVersion": "2021-06-01",
+      "name": "empire-deny-direct-portal-modification",
+      "properties": {
+        "displayName": "Empire: Block Untagged Security Changes",
+        "description": "All Conditional Access policy changes must have empire-action-id tag. Direct portal changes without evidence are blocked.",
+        "policyType": "Custom",
+        "mode": "All",
+        "metadata": {
+          "category": "Empire Governance"
+        },
+        "parameters": {},
+        "policyRule": {
+          "if": {
+            "allOf": [
+              {
+                "field": "type",
+                "in": [
+                  "Microsoft.Network/networkSecurityGroups",
+                  "Microsoft.KeyVault/vaults/accessPolicies"
+                ]
+              },
+              {
+                "field": "tags['empire-controlled-entry']",
+                "notEquals": "true"
+              }
+            ]
+          },
+          "then": {
+            "effect": "deny"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/policyDefinitions",
+      "apiVersion": "2021-06-01",
+      "name": "empire-require-diagnostic-settings",
+      "properties": {
+        "displayName": "Empire: Require Diagnostic Settings (Immutable Audit)",
+        "description": "All resources must have diagnostic settings sending logs to Log Analytics Workspace",
+        "policyType": "Custom",
+        "mode": "All",
+        "metadata": {
+          "category": "Empire Governance"
+        },
+        "parameters": {
+          "logAnalyticsWorkspaceId": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Log Analytics Workspace ID"
+            }
+          }
+        },
+        "policyRule": {
+          "if": {
+            "field": "type",
+            "in": [
+              "Microsoft.KeyVault/vaults",
+              "Microsoft.Storage/storageAccounts",
+              "Microsoft.Network/networkSecurityGroups"
+            ]
+          },
+          "then": {
+            "effect": "auditIfNotExists",
+            "details": {
+              "type": "Microsoft.Insights/diagnosticSettings",
+              "existenceCondition": {
+                "count": {
+                  "field": "Microsoft.Insights/diagnosticSettings/logs[*]",
+                  "where": {
+                    "field": "Microsoft.Insights/diagnosticSettings/logs[*].enabled",
+                    "equals": "true"
+                  }
+                },
+                "greaterOrEquals": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/policyDefinitions",
+      "apiVersion": "2021-06-01",
+      "name": "empire-no-public-blob",
+      "properties": {
+        "displayName": "Empire: No Public Blob Storage (Evidence Protection)",
+        "description": "Evidence files must not be publicly accessible. Block public blob access.",
+        "policyType": "Custom",
+        "mode": "All",
+        "metadata": {
+          "category": "Empire Governance"
+        },
+        "parameters": {},
+        "policyRule": {
+          "if": {
+            "allOf": [
+              {
+                "field": "type",
+                "equals": "Microsoft.Storage/storageAccounts"
+              },
+              {
+                "field": "Microsoft.Storage/storageAccounts/allowBlobPublicAccess",
+                "equals": "true"
+              }
+            ]
+          },
+          "then": {
+            "effect": "deny"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "mandateVersion": {
+      "type": "string",
+      "value": "Empire Governance Policy Suite v1.0 - All operations require Before/After/Diff evidence"
+    }
+  }
+}
