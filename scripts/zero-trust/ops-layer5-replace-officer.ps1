@@ -145,9 +145,12 @@ if ($Action -eq "audit") {
 
 # ── ACTION: replace ───────────────────────────────────────────
 if ($Action -eq "replace") {
-    if (-not $OldOfficerUpn -or -not $NewOfficerUpn) {
-        Write-Host "ERROR: OLD_OFFICER_UPN and NEW_OFFICER_UPN required"
-        exit 1
+    if (-not $NewOfficerUpn) {
+        Write-Audit -Event "REPLACE_ERROR" -Actor "System" -Detail "NewOfficerUpn required"
+        Write-Host "ERROR: NEW_OFFICER_UPN required for handover"; exit 1
+    }
+    if (-not $OldOfficerUpn) {
+        Write-Host "  INFO: No OldOfficerUpn — removing ALL current officers before assigning new"
     }
 
     Write-Host ""
@@ -162,7 +165,10 @@ if ($Action -eq "replace") {
     # Step 1: Verify new officer exists
     $newUser = Invoke-Graph -Method "GET" -Uri "/users/$NewOfficerUpn"
     if (-not $newUser) {
-        Write-Host "  ERROR: New officer not found: $NewOfficerUpn"
+        Write-Host "  WARNING: $NewOfficerUpn not in Azure AD"
+        Write-Audit -Event "OFFICER_PENDING_INVITE" -Actor "System" -Detail "Huida Group handover pending. Invite $NewOfficerUpn to tenant first."
+        Write-Host "  ACTION REQUIRED: Invite $NewOfficerUpn to Azure AD tenant"
+        Write-Host "  Run: New-MgInvitation -InvitedUserEmailAddress $NewOfficerUpn"
         exit 1
     }
 
