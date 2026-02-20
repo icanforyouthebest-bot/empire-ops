@@ -44,7 +44,7 @@ function Write-Audit {
 $ORG = "icanforyouthebest-bot"
 $REPOS = @(
     @{ name = "SEOBAIKE";     branch = "master"; required_checks = @("Security Gate", "AI Empire — Full Deploy Pipeline") }
-    @{ name = "empire-ops";   branch = "main";   required_checks = @("Supabase Drift + Repair", "Website Health") }
+    @{ name = "empire-ops";   branch = "main";   required_checks = @("Enforce Branch Protection (Layer 3)", "Azure Governance Deploy") }
     @{ name = "seobaike-saas"; branch = "main";  required_checks = @("Deploy") }
     @{ name = "e5-automation"; branch = "master"; required_checks = @("E5 Azure Automation") }
 )
