@@ -60,6 +60,19 @@ jobs:
             evidence-diff-*.json
           retention-days: 90
 
+
+      - name: Layer 8 - Telegram Alert (3h report)
+        if: always()
+        shell: pwsh
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          pwsh scripts/zero-trust/ops-layer8-telegram.ps1 -EventType "report" -Status "OK" -LookbackMinutes 180
+        continue-on-error: true
+
       - name: Self-Heal Patrol (Post-report)
         if: always()
         shell: pwsh
